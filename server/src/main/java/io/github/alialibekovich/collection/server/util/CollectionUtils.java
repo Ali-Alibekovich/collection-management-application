@@ -3,6 +3,7 @@ package io.github.alialibekovich.collection.server.util;
 import io.github.alialibekovich.collection.model.Organization;
 
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 public class CollectionUtils {
     public static String organizationInfo(Organization organization) {
@@ -16,12 +17,16 @@ public class CollectionUtils {
     }
 
     public static boolean doesExist(int ID) {
-        boolean exist=false;
-        for (Organization organization : CollectionManager.getCollection()) {
-            if(organization.getId()==ID){
-                exist=true;
+        List<Organization> collection = CollectionManager.getCollection();
+        // iterating a synchronized list still requires holding its lock:
+        // request handlers mutate the collection concurrently
+        synchronized (collection) {
+            for (Organization organization : collection) {
+                if (organization.getId() == ID) {
+                    return true;
+                }
             }
         }
-        return exist;
+        return false;
     }
 }
