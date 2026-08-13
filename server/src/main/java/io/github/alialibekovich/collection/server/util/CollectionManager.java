@@ -20,7 +20,7 @@ public class CollectionManager {
 
 
     public static void initializeCollection() {
-        organizationCollection = new ArrayList<>();
+        organizationCollection = Collections.synchronizedList(new ArrayList<>());
         initializationDate = LocalDateTime.now();
     }
 
@@ -29,28 +29,14 @@ public class CollectionManager {
     }
 
     public static String information() {
-        return "Тип коллекции: " + organizationCollection.getClass().getSimpleName() + ".\nДата инициализации: " + initializationDate + ".\nКоличество элементов: " + organizationCollection.size() + ".";
-    }
-
-    public static String fullInformation() {
-        StringBuilder str = new StringBuilder();
-        if (organizationCollection.size() == 0) {
-            str.append("Коллекция пуста.");
-        } else {
-            Organization[] arr = organizationCollection.toArray(new Organization[0]);
-            ;
-            clearCollection();
-            organizationCollection.addAll(Arrays.asList(arr));
-            organizationCollection.forEach(organization -> str.append(CollectionUtils.organizationInfo(organization)));
-        }
-        return String.valueOf(str);
+        return "Тип коллекции: ArrayList" + ".\nДата инициализации: " + initializationDate + ".\nКоличество элементов: " + organizationCollection.size() + ".";
     }
 
     public static String addOrganization() {
         try {
             OrganizationsRepository.loadCollection(getCollection());
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Failed to reload the collection from the database", e);
         }
         return "Организация добавлена в коллекцию.";
     }
@@ -81,19 +67,23 @@ public class CollectionManager {
 
     public static String removeHead(String login) {
         StringBuilder str = new StringBuilder();
-        if (organizationCollection.size() != 0) {
-            str.append(CollectionUtils.organizationInfo(organizationCollection.get(0)));
-            int id = organizationCollection.get(0).getId();
-            if (OrganizationsRepository.isOwnedBy(id, login)) {
-                try {
-                    DatabaseCommunicator.getOrganizations().deleteOrganizationFromDataBase(organizationCollection.get(0).getId());
-                } catch (SQLException e) {
-                    log.error("Failed to delete the head element from the database", e);
+        // get(0) + remove(0) is a compound action: hold the list lock so two
+        // concurrent remove_head requests cannot observe and delete the same head
+        synchronized (organizationCollection) {
+            if (organizationCollection.size() != 0) {
+                Organization head = organizationCollection.get(0);
+                str.append(CollectionUtils.organizationInfo(head));
+                if (OrganizationsRepository.isOwnedBy(head.getId(), login)) {
+                    try {
+                        DatabaseCommunicator.getOrganizations().deleteOrganizationFromDataBase(head.getId());
+                    } catch (SQLException e) {
+                        log.error("Failed to delete the head element from the database", e);
+                    }
+                    organizationCollection.remove(0);
                 }
-                organizationCollection.remove(0);
+            } else {
+                str.append("В этой коллекции нет элементов.");
             }
-        } else {
-            str.append("В этой коллекции нет элементов.");
         }
         return String.valueOf(str);
     }
@@ -121,29 +111,25 @@ public class CollectionManager {
 
     public static String filterByAnnualTurnover(Double annualTurnover) {
         StringBuilder str = new StringBuilder();
-        Organization[] arr = organizationCollection.toArray(new Organization[0]);
-        Arrays.sort(arr, new OrganizationComparator());
-        clearCollection();
-        organizationCollection.addAll(Arrays.asList(arr));
-        organizationCollection.forEach(organization -> {
+        Organization[] snapshot = organizationCollection.toArray(new Organization[0]);
+        Arrays.sort(snapshot, new OrganizationComparator());
+        for (Organization organization : snapshot) {
             if (organization.getAnnualTurnover().equals(annualTurnover)) {
                 str.append(CollectionUtils.organizationInfo(organization));
             }
-        });
+        }
         return String.valueOf(str);
     }
 
     public static String filterStartsWithName(String name) {
         StringBuilder str = new StringBuilder();
-        Organization[] arr = organizationCollection.toArray(new Organization[0]);
-        Arrays.sort(arr, new OrganizationComparator());
-        clearCollection();
-        organizationCollection.addAll(Arrays.asList(arr));
-        organizationCollection.forEach(organization -> {
+        Organization[] snapshot = organizationCollection.toArray(new Organization[0]);
+        Arrays.sort(snapshot, new OrganizationComparator());
+        for (Organization organization : snapshot) {
             if (organization.getName().startsWith(name)) {
                 str.append(CollectionUtils.organizationInfo(organization));
             }
-        });
+        }
         return String.valueOf(str);
     }
 
