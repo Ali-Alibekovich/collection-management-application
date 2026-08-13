@@ -63,12 +63,19 @@ client asked for the collection (`show`, `visualize`).
 - `Communicator` — blocking receive loop on a single channel; every datagram
   is copied out of the receive buffer and dispatched to a bounded worker pool
   (`RequestHandler`).
-- `CommandDecoder` — unwraps the envelope and invokes the server twin.
-- `Receiver` — implements the actual operations; every mutating operation
-  checks credentials first and ownership where relevant.
+- `CommandDispatcher` — unwraps the envelope and routes it to the
+  `CommandHandler` registered for the command's class (Strategy); server twins
+  are pure data markers (ADR 0004).
+- Handlers — one class per command; credential checks live in the
+  `AuthenticatedHandler` template, dependencies come in through constructors
+  wired in `Main` (composition root), answers are returned as strings and sent
+  by the net layer.
+- `OrganizationCollection` — instance-based, thread-safe in-memory view of the
+  collection backed by the `OrganizationStore` abstraction.
 - Repositories (`OrganizationsRepository`, `UsersRepository`) — plain JDBC with
-  prepared statements. Tables are created on startup (`CREATE TABLE IF NOT
-  EXISTS`), so no migration step is needed for a fresh database.
+  prepared statements implementing the `OrganizationStore`/`UserStore`
+  interfaces. Tables are created on startup (`CREATE TABLE IF NOT EXISTS`),
+  so no migration step is needed for a fresh database.
 
 ### Authentication
 
@@ -124,7 +131,4 @@ organizations (
 
 - No transport security: credentials travel in cleartext inside datagrams.
 - The 4 KB datagram limit bounds the collection size for `show`/`visualize`.
-- Static singletons (`CollectionManager`, repository accessors) keep the code
-  close to its coursework origins; extracting instance-based services would be
-  the next refactoring step.
 - UI-thread networking in the client can freeze the interface on a slow link.

@@ -52,7 +52,7 @@ The project is a three-module Maven build:
 | Module | Contents |
 | --- | --- |
 | `common` | Domain model (`Organization`, `Coordinates`, …) and the serializable command protocol |
-| `server` | UDP endpoint, command execution, PostgreSQL repositories, mail notifications |
+| `server` | UDP endpoint, handler registry (Strategy) with constructor-injected dependencies, PostgreSQL repositories, mail notifications |
 | `client` | JavaFX UI, client-side commands, i18n resources |
 
 A deeper dive — wire protocol, threading model, database schema — lives in
