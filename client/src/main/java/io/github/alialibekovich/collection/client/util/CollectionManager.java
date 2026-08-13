@@ -11,7 +11,7 @@ public class CollectionManager {
 
 
     public static void initializeCollection() {
-        organizationCollection = new ArrayList<>();
+        organizationCollection = Collections.synchronizedList(new ArrayList<>());
         initializationDate = LocalDateTime.now();
     }
 

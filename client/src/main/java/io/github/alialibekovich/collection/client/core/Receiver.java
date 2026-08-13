@@ -169,11 +169,7 @@ public class Receiver {
             DatagramPacket ip = new DatagramPacket(ib, ib.length);
             datagramSocket.setSoTimeout(5000);
             datagramSocket.receive(ip);
-            String result = new String(ib);
-            FileWriter writer = new FileWriter("secret_client_information_dont_look.json", false);
-            writer.write(result.trim());
-            writer.flush();
-            ParserJson.fromJsonToCollection();
+            ParserJson.loadCollection(new String(ib).trim());
             Stage stage = new Stage();
             Parent root = FXMLLoader.load(getClass().getClassLoader().getResource("view/show.fxml"));
             Scene scene = new Scene(root);
@@ -443,11 +439,7 @@ public class Receiver {
             DatagramPacket ip = new DatagramPacket(ib, ib.length);
             datagramSocket.setSoTimeout(5000);
             datagramSocket.receive(ip);
-            String result = new String(ib);
-            FileWriter writer = new FileWriter("secret_client_information_dont_look.json", false);
-            writer.write(result.trim());
-            writer.flush();
-            ParserJson.fromJsonToCollection();
+            ParserJson.loadCollection(new String(ib).trim());
             paintObjects(CollectionManager.getCollection());
         } catch (SocketTimeoutException | PortUnreachableException e) {
             warningAboutServerBeingNotAvailable();
