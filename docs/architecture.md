@@ -60,8 +60,9 @@ client asked for the collection (`show`, `visualize`).
 
 ## Server
 
-- `Communicator` — non-blocking accept loop; each datagram is handed to a
-  `RequestHandler` thread.
+- `Communicator` — blocking receive loop on a single channel; every datagram
+  is copied out of the receive buffer and dispatched to a bounded worker pool
+  (`RequestHandler`).
 - `CommandDecoder` — unwraps the envelope and invokes the server twin.
 - `Receiver` — implements the actual operations; every mutating operation
   checks credentials first and ownership where relevant.

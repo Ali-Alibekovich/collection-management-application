@@ -35,7 +35,7 @@ flowchart LR
         Core --> SenderN[Sender]
     end
     subgraph server["collection-server"]
-        Comm[Communicator<br/>UDP accept loop] --> Handler[RequestHandler thread]
+        Comm[Communicator<br/>UDP accept loop] --> Handler[RequestHandler<br/>worker pool]
         Handler --> Decoder[CommandDecoder] --> Cmds[Server commands]
         Cmds --> Repos[Repositories]
     end

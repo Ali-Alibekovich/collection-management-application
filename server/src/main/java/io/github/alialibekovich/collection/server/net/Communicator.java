@@ -5,59 +5,58 @@ import io.github.alialibekovich.collection.server.util.CollectionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.EOFException;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.sql.SQLException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
- * UDP accept loop: receives a datagram, deserializes the command envelope and
- * hands it over to a {@link RequestHandler} thread.
+ * UDP accept loop: receives a datagram, hands its bytes to a worker thread.
+ *
+ * <p>The channel stays in blocking mode — with a single channel a blocking
+ * {@code receive} is simpler than a {@code Selector} and burns no CPU while
+ * idle. Every datagram is copied out of the receive buffer before dispatch,
+ * so workers never share the buffer with the accept loop, and the work itself
+ * runs on a bounded thread pool instead of a thread per request.</p>
  */
 public class Communicator {
 
     private static final Logger log = LoggerFactory.getLogger(Communicator.class);
 
     private static final int BUFFER_SIZE = 4096;
+    private static final int WORKER_THREADS = Math.max(2, Runtime.getRuntime().availableProcessors());
 
     public void run(int port) {
+        ExecutorService workers = Executors.newFixedThreadPool(WORKER_THREADS);
         try {
             CollectionManager.initializeCollection();
             DatabaseCommunicator.getOrganizations().loadCollection(CollectionManager.getCollection());
             DatagramChannel datagramChannel = DatagramChannel.open();
-            datagramChannel.configureBlocking(false);
             datagramChannel.socket().bind(new InetSocketAddress(port));
-            log.info("Server is listening on UDP port {}", port);
-            byte[] buffer = new byte[BUFFER_SIZE];
+            log.info("Server is listening on UDP port {} ({} worker threads)", port, WORKER_THREADS);
+            ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
             while (true) {
-                SocketAddress socketAddress = datagramChannel.receive(ByteBuffer.wrap(buffer));
+                buffer.clear();
+                SocketAddress socketAddress = datagramChannel.receive(buffer);
                 if (socketAddress == null) {
                     continue;
                 }
-                try {
-                    RequestHandler handler = new RequestHandler(
-                            new ObjectInputStream(new ByteArrayInputStream(buffer)),
-                            socketAddress,
-                            new CommandDecoder(datagramChannel, socketAddress));
-                    handler.start();
-                    Thread.sleep(50);
-                } catch (EOFException | SocketException e) {
-                    log.warn("Malformed datagram from {}", socketAddress, e);
-                }
+                buffer.flip();
+                byte[] datagram = new byte[buffer.remaining()];
+                buffer.get(datagram);
+                workers.submit(new RequestHandler(
+                        datagram, socketAddress, new CommandDecoder(datagramChannel, socketAddress)));
             }
         } catch (IOException e) {
             log.error("Server socket failure", e);
         } catch (SQLException e) {
             log.error("Failed to load the collection from the database", e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.info("Server loop interrupted, shutting down");
+        } finally {
+            workers.shutdown();
         }
     }
 }
