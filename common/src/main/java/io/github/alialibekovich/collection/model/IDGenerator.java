@@ -1,19 +1,26 @@
 package io.github.alialibekovich.collection.model;
 
-import java.util.HashSet;
-import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 
-public class IDGenerator {
-    private static HashSet<Integer> IDs = new HashSet<>();
+/**
+ * Generates collection-unique ids. Safe to call from concurrent request
+ * handlers: uniqueness is guaranteed by the atomic add to a concurrent set.
+ */
+public final class IDGenerator {
+
+    private static final Set<Integer> USED_IDS = ConcurrentHashMap.newKeySet();
+
+    private IDGenerator() {
+    }
 
     public static int generateID() {
-        Integer id = new Random().nextInt(Integer.MAX_VALUE);
-        if (IDs.contains(id)) {
-            while (IDs.contains(id)) {
-                id = new Random().nextInt(Integer.MAX_VALUE);
+        while (true) {
+            int id = ThreadLocalRandom.current().nextInt(Integer.MAX_VALUE);
+            if (USED_IDS.add(id)) {
+                return id;
             }
         }
-        IDs.add(id);
-        return id;
     }
 }
