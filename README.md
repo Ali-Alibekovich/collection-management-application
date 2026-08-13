@@ -103,12 +103,28 @@ the welcome e-mail is simply skipped.
 mvn verify
 ```
 
-- Unit tests cover the serialization protocol and password hashing.
+- Unit tests cover the serialization protocol, password hashing, collection
+  operations, sort comparators, JSON parsing and i18n bundle parity.
+- Concurrency is guarded at three levels: multi-threaded unit tests (id
+  generation, collection mutation, lock-held scans), a **jcstress** suite for
+  the memory-model-level atomicity of the id pool, and an end-to-end test that
+  boots the real server in a separate JVM and fires 24 concurrent
+  register/login exchanges over UDP.
 - Integration tests spin up a real PostgreSQL in Docker via
   [Testcontainers](https://testcontainers.com/) and exercise the repositories,
   including a regression test for credential validation.
+- **Coverage** — JaCoCo runs on every build with per-module floors (common
+  45%, server 20%). The JavaFX client stays ungated: testing the UI layer
+  needs TestFX and a controller/networking split, listed under future work.
 - If your Docker daemon cannot reach Docker Hub, point the tests at a mirror:
   `mvn verify -Dpostgres.image=public.ecr.aws/docker/library/postgres:16-alpine`.
+
+Run the stress suite separately (also a dedicated CI job):
+
+```bash
+mvn -pl stress -am package -DskipTests
+java -jar stress/target/jcstress.jar -m sanity
+```
 
 ## Project structure
 

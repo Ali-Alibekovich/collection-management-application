@@ -21,3 +21,4 @@ Thumbs.db
 
 # jcstress output
 results/
+jcstress-results-*.bin.gz
