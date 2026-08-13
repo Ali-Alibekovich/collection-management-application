@@ -40,7 +40,7 @@ flowchart LR
     end
     subgraph server["collection-server"]
         Comm[Communicator<br/>цикл приёма UDP] --> Handler[RequestHandler<br/>пул воркеров]
-        Handler --> Decoder[CommandDecoder] --> Cmds[Серверные команды]
+        Handler --> Dispatcher[CommandDispatcher] --> Cmds[Хендлеры команд]
         Cmds --> Repos[Репозитории]
     end
     SenderN -- "UDP: сериализованные конверты команд" --> Comm

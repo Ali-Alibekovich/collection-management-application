@@ -38,7 +38,7 @@ flowchart LR
     end
     subgraph server["collection-server"]
         Comm[Communicator<br/>UDP accept loop] --> Handler[RequestHandler<br/>worker pool]
-        Handler --> Decoder[CommandDecoder] --> Cmds[Server commands]
+        Handler --> Dispatcher[CommandDispatcher] --> Cmds[Command handlers]
         Cmds --> Repos[Repositories]
     end
     SenderN -- "UDP: serialized command envelopes" --> Comm
