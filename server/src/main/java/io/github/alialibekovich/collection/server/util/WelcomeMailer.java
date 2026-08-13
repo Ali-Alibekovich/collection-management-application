@@ -13,31 +13,24 @@ import javax.mail.internet.MimeMessage;
 import java.util.Properties;
 
 /**
- * Sends a welcome e-mail to newly registered users.
- *
- * <p>The sender account is configured through the {@code MAIL_USER} and
- * {@code MAIL_PASSWORD} environment variables ({@code SMTP_HOST} and
- * {@code SMTP_PORT} are optional). When no account is configured the sender
- * is disabled and registration proceeds without e-mail notifications.
- * Passwords are deliberately never included in the message.</p>
+ * Sends a welcome e-mail to newly registered users. When no sender account is
+ * configured the mailer is disabled and registration proceeds without
+ * notifications. Passwords are deliberately never included in the message.
  */
-public final class MessageMailSender {
+public final class WelcomeMailer {
 
-    private static final Logger log = LoggerFactory.getLogger(MessageMailSender.class);
+    private static final Logger log = LoggerFactory.getLogger(WelcomeMailer.class);
 
-    private static String senderAddress;
-    private static String senderPassword;
-    private static String smtpHost;
-    private static String smtpPort;
+    private final String senderAddress;
+    private final String senderPassword;
+    private final String smtpHost;
+    private final String smtpPort;
 
-    private MessageMailSender() {
-    }
-
-    public static void configureFromEnvironment() {
-        senderAddress = System.getenv("MAIL_USER");
-        senderPassword = System.getenv("MAIL_PASSWORD");
-        smtpHost = valueOrDefault(System.getenv("SMTP_HOST"), "smtp.yandex.ru");
-        smtpPort = valueOrDefault(System.getenv("SMTP_PORT"), "465");
+    public WelcomeMailer(String senderAddress, String senderPassword, String smtpHost, String smtpPort) {
+        this.senderAddress = senderAddress;
+        this.senderPassword = senderPassword;
+        this.smtpHost = smtpHost;
+        this.smtpPort = smtpPort;
         if (isConfigured()) {
             log.info("Mail notifications enabled, sending from {}", senderAddress);
         } else {
@@ -45,12 +38,20 @@ public final class MessageMailSender {
         }
     }
 
-    public static boolean isConfigured() {
+    public static WelcomeMailer fromEnvironment() {
+        return new WelcomeMailer(
+                System.getenv("MAIL_USER"),
+                System.getenv("MAIL_PASSWORD"),
+                valueOrDefault(System.getenv("SMTP_HOST"), "smtp.yandex.ru"),
+                valueOrDefault(System.getenv("SMTP_PORT"), "465"));
+    }
+
+    public boolean isConfigured() {
         return senderAddress != null && !senderAddress.isEmpty()
                 && senderPassword != null && !senderPassword.isEmpty();
     }
 
-    public static void sendWelcome(String login, String recipient) throws MessagingException {
+    public void sendWelcome(String login, String recipient) throws MessagingException {
         if (!isConfigured()) {
             log.debug("Skipping welcome e-mail for '{}': mail is not configured", login);
             return;

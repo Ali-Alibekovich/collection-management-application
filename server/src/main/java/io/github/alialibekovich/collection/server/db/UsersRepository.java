@@ -1,5 +1,6 @@
 package io.github.alialibekovich.collection.server.db;
 
+import io.github.alialibekovich.collection.server.core.UserStore;
 import org.mindrot.jbcrypt.BCrypt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +18,7 @@ import java.sql.Statement;
  * <p>Passwords are stored as bcrypt hashes (salt is embedded in the hash),
  * so the same password produces a different hash for every user.</p>
  */
-public class UsersRepository {
+public class UsersRepository implements UserStore {
 
     private static final Logger log = LoggerFactory.getLogger(UsersRepository.class);
 
@@ -40,6 +41,7 @@ public class UsersRepository {
         }
     }
 
+    @Override
     public void addUser(String login, String password, String color) throws SQLException {
         String sql = "INSERT INTO users (login, password, color) VALUES (?, ?, ?)";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -54,6 +56,7 @@ public class UsersRepository {
      * Verifies a login/password pair against the stored bcrypt hash.
      * The pair is checked as a whole: a password of another user never matches.
      */
+    @Override
     public boolean checkCredentials(String login, String password) {
         String sql = "SELECT password FROM users WHERE login = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -67,15 +70,18 @@ public class UsersRepository {
         }
     }
 
+    @Override
     public boolean loginExists(String login) throws SQLException {
         return exists("SELECT 1 FROM users WHERE login = ?", login);
     }
 
     /** The profile colour doubles as a user marker in the visualization, hence the uniqueness check. */
+    @Override
     public boolean colorTaken(String color) throws SQLException {
         return exists("SELECT 1 FROM users WHERE color = ?", color);
     }
 
+    @Override
     public String getColor(String login) {
         String sql = "SELECT color FROM users WHERE login = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {

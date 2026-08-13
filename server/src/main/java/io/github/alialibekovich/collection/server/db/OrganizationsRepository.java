@@ -1,125 +1,125 @@
 package io.github.alialibekovich.collection.server.db;
 
-import io.github.alialibekovich.collection.model.*;
-import io.github.alialibekovich.collection.server.util.CollectionManager;
+import io.github.alialibekovich.collection.model.Address;
+import io.github.alialibekovich.collection.model.Coordinates;
+import io.github.alialibekovich.collection.model.Location;
+import io.github.alialibekovich.collection.model.Organization;
+import io.github.alialibekovich.collection.model.OrganizationType;
+import io.github.alialibekovich.collection.server.core.OrganizationStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
-public class OrganizationsRepository {
+/** JDBC implementation of {@link OrganizationStore} backed by PostgreSQL. */
+public class OrganizationsRepository implements OrganizationStore {
 
     private static final Logger log = LoggerFactory.getLogger(OrganizationsRepository.class);
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
-    private final Statement statement;
-    private static Connection connection;
+    private final Connection connection;
 
     public OrganizationsRepository(Connection connection) throws SQLException {
-        OrganizationsRepository.connection = connection;
-        this.statement = connection.createStatement();
-        String createTableSQL = "CREATE TABLE IF NOT EXISTS  organizations " +
-                "(id serial primary key not null," +
-                " owner TEXT NOT NULL , " +
-                " name TEXT NOT NULL , " +
-                " x DOUBLE PRECISION NOT NULL, " +
-                " y DOUBLE PRECISION NOT NULL, " +
-                " creationDate TEXT NOT NULL , " +
-                " annualTurnover DOUBLE PRECISION NOT NULL," +
-                " organizationType TEXT NOT NULL, " +
-                " street TEXT NOT NULL, " +
-                " zipCode TEXT NOT NULL , " +
-                " location_x DOUBLE PRECISION NOT NULL , " +
-                " location_y DOUBLE PRECISION NOT NULL , " +
-                " town TEXT NOT NULL," +
-                "color TEXT NOT NULL)";
-        statement.execute(createTableSQL);
+        this.connection = connection;
+        createTableIfAbsent();
     }
 
-    public static void loadCollection(List<Organization> organizations) throws SQLException {
-        String query = " SELECT * FROM ORGANIZATIONS ORDER by id;";
-        Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery(query);
-        organizations.clear();
-        while (resultSet.next()) {
-            String str = resultSet.getString(6);
-            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-            organizations.add(new Organization(resultSet.getInt(1), resultSet.getString(3),
-                    new Coordinates(resultSet.getDouble(4), resultSet.getDouble(5)),
-                    LocalDateTime.parse(str, dtf),
-                    resultSet.getDouble(7), OrganizationType.valueOf(resultSet.getString(8)), new Address(resultSet.getString(9),
-                    resultSet.getString(10), new Location(resultSet.getFloat(11), resultSet.getFloat(12), resultSet.getString(13))), resultSet.getString(2), resultSet.getString(14)));
+    private void createTableIfAbsent() throws SQLException {
+        String ddl = "CREATE TABLE IF NOT EXISTS organizations "
+                + "(id serial primary key not null,"
+                + " owner TEXT NOT NULL, "
+                + " name TEXT NOT NULL, "
+                + " x DOUBLE PRECISION NOT NULL, "
+                + " y DOUBLE PRECISION NOT NULL, "
+                + " creationDate TEXT NOT NULL, "
+                + " annualTurnover DOUBLE PRECISION NOT NULL,"
+                + " organizationType TEXT NOT NULL, "
+                + " street TEXT NOT NULL, "
+                + " zipCode TEXT NOT NULL, "
+                + " location_x DOUBLE PRECISION NOT NULL, "
+                + " location_y DOUBLE PRECISION NOT NULL, "
+                + " town TEXT NOT NULL,"
+                + " color TEXT NOT NULL)";
+        try (Statement statement = connection.createStatement()) {
+            statement.execute(ddl);
         }
     }
 
-    public void addOrganizationToTheBase(Organization organization, int id) {
-        if (id == -1) {
-            try {
-                String sql = "INSERT INTO organizations (owner , name, x, y, creationDate, annualTurnover, organizationType, street, zipCode, location_x, location_y, town, color) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);";
-                PreparedStatement preparedStatement = connection.prepareStatement(sql);
-                preparedStatement.setString(1, organization.getOwner());
-                preparedStatement.setString(2, organization.getName());
-                preparedStatement.setDouble(3, organization.getCoordinates().getX());
-                preparedStatement.setDouble(4, organization.getCoordinates().getY());
-                LocalDateTime localDate = organization.getCreationDate();
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-                String formattedString = localDate.format(formatter);
-                preparedStatement.setString(5, formattedString);
-                preparedStatement.setDouble(6, organization.getAnnualTurnover());
-                preparedStatement.setString(7, organization.getType().getString());
-                preparedStatement.setString(8, organization.getOfficialAddress().getStreet());
-                preparedStatement.setString(9, organization.getOfficialAddress().getZipCode());
-                preparedStatement.setDouble(10, organization.getOfficialAddress().getTown().getX());
-                preparedStatement.setDouble(11, organization.getOfficialAddress().getTown().getY());
-                preparedStatement.setString(12, organization.getOfficialAddress().getTown().getName());
-                preparedStatement.setString(13, organization.getColor());
-                preparedStatement.execute();
-            } catch (Exception e) {
-                log.error("Database operation failed", e);
-            }
-        } else {
-            try {
-                String sql = "INSERT INTO organizations (id ,owner , name, x, y, creationDate, annualTurnover, organizationType, street, zipCode, location_x, location_y, town, color) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
-                PreparedStatement preparedStatement = connection.prepareStatement(sql);
-                preparedStatement.setInt(1, id);
-                preparedStatement.setString(2, organization.getOwner());
-                preparedStatement.setString(3, organization.getName());
-                preparedStatement.setDouble(4, organization.getCoordinates().getX());
-                preparedStatement.setDouble(5, organization.getCoordinates().getY());
-                LocalDateTime localDate = organization.getCreationDate();
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-                String formattedString = localDate.format(formatter);
-                preparedStatement.setString(6, formattedString);
-                preparedStatement.setDouble(7, organization.getAnnualTurnover());
-                preparedStatement.setString(8, organization.getType().getString());
-                preparedStatement.setString(9, organization.getOfficialAddress().getStreet());
-                preparedStatement.setString(10, organization.getOfficialAddress().getZipCode());
-                preparedStatement.setDouble(11, organization.getOfficialAddress().getTown().getX());
-                preparedStatement.setDouble(12, organization.getOfficialAddress().getTown().getY());
-                preparedStatement.setString(13, organization.getOfficialAddress().getTown().getName());
-                preparedStatement.setString(14, organization.getColor());
-                preparedStatement.execute();
-            } catch (SQLException e) {
-                log.error("Database operation failed", e);
+    @Override
+    public List<Organization> findAll() throws SQLException {
+        List<Organization> organizations = new ArrayList<>();
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT * FROM organizations ORDER BY id")) {
+            while (resultSet.next()) {
+                organizations.add(new Organization(
+                        resultSet.getInt(1),
+                        resultSet.getString(3),
+                        new Coordinates(resultSet.getDouble(4), resultSet.getDouble(5)),
+                        LocalDateTime.parse(resultSet.getString(6), DATE_FORMAT),
+                        resultSet.getDouble(7),
+                        OrganizationType.valueOf(resultSet.getString(8)),
+                        new Address(resultSet.getString(9), resultSet.getString(10),
+                                new Location(resultSet.getFloat(11), resultSet.getFloat(12), resultSet.getString(13))),
+                        resultSet.getString(2),
+                        resultSet.getString(14)));
             }
         }
+        return organizations;
     }
 
-    public void deleteOrganizationFromDataBase(int id) throws SQLException {
-        try (PreparedStatement preparedStatement = connection.prepareStatement("DELETE FROM organizations WHERE id = ?")) {
-            preparedStatement.setInt(1, id);
-            preparedStatement.execute();
+    @Override
+    public void add(Organization organization, int id) {
+        boolean withId = id != -1;
+        String sql = withId
+                ? "INSERT INTO organizations (id, owner, name, x, y, creationDate, annualTurnover, organizationType, street, zipCode, location_x, location_y, town, color) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                : "INSERT INTO organizations (owner, name, x, y, creationDate, annualTurnover, organizationType, street, zipCode, location_x, location_y, town, color) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            int i = 1;
+            if (withId) {
+                statement.setInt(i++, id);
+            }
+            statement.setString(i++, organization.getOwner());
+            statement.setString(i++, organization.getName());
+            statement.setDouble(i++, organization.getCoordinates().getX());
+            statement.setDouble(i++, organization.getCoordinates().getY());
+            statement.setString(i++, organization.getCreationDate().format(DATE_FORMAT));
+            statement.setDouble(i++, organization.getAnnualTurnover());
+            statement.setString(i++, organization.getType().getString());
+            statement.setString(i++, organization.getOfficialAddress().getStreet());
+            statement.setString(i++, organization.getOfficialAddress().getZipCode());
+            statement.setDouble(i++, organization.getOfficialAddress().getTown().getX());
+            statement.setDouble(i++, organization.getOfficialAddress().getTown().getY());
+            statement.setString(i++, organization.getOfficialAddress().getTown().getName());
+            statement.setString(i, organization.getColor());
+            statement.execute();
+        } catch (SQLException e) {
+            log.error("Failed to insert an organization", e);
         }
     }
 
-    public static boolean isOwnedBy(int id, String login) {
+    @Override
+    public void delete(int id) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("DELETE FROM organizations WHERE id = ?")) {
+            statement.setInt(1, id);
+            statement.execute();
+        }
+    }
+
+    @Override
+    public boolean isOwnedBy(int id, String login) {
         String sql = "SELECT 1 FROM organizations WHERE id = ? AND owner = ?";
-        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setInt(1, id);
-            preparedStatement.setString(2, login);
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, id);
+            statement.setString(2, login);
+            try (ResultSet resultSet = statement.executeQuery()) {
                 return resultSet.next();
             }
         } catch (SQLException e) {
@@ -128,13 +128,11 @@ public class OrganizationsRepository {
         }
     }
 
-    public static void clearCollectionOnDataBase(String owner) {
-        try (PreparedStatement preparedStatement = connection.prepareStatement("DELETE FROM organizations WHERE owner = ?")) {
-            preparedStatement.setString(1, owner);
-            preparedStatement.execute();
-            loadCollection(CollectionManager.getCollection());
-        } catch (SQLException e) {
-            log.error("Failed to clear organizations of user '{}'", owner, e);
+    @Override
+    public void clearByOwner(String owner) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("DELETE FROM organizations WHERE owner = ?")) {
+            statement.setString(1, owner);
+            statement.execute();
         }
     }
 }

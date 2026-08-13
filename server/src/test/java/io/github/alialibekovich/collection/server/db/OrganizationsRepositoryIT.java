@@ -16,7 +16,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -43,11 +42,9 @@ class OrganizationsRepositoryIT {
 
     @Test
     void storedOrganizationSurvivesLoadRoundTrip() throws SQLException {
-        organizations.addOrganizationToTheBase(sampleOrganization("Acme", "alice"), -1);
+        organizations.add(sampleOrganization("Acme", "alice"), -1);
 
-        List<Organization> loaded = loadAll();
-
-        Organization acme = loaded.stream()
+        Organization acme = organizations.findAll().stream()
                 .filter(organization -> organization.getName().equals("Acme"))
                 .findFirst()
                 .orElseThrow();
@@ -59,32 +56,39 @@ class OrganizationsRepositoryIT {
 
     @Test
     void ownershipCheckMatchesOnlyTheOwner() throws SQLException {
-        organizations.addOrganizationToTheBase(sampleOrganization("Owned", "bob"), -1);
+        organizations.add(sampleOrganization("Owned", "bob"), -1);
         int id = idOf("Owned");
 
-        assertTrue(OrganizationsRepository.isOwnedBy(id, "bob"));
-        assertFalse(OrganizationsRepository.isOwnedBy(id, "mallory"));
-        assertFalse(OrganizationsRepository.isOwnedBy(-42, "bob"));
+        assertTrue(organizations.isOwnedBy(id, "bob"));
+        assertFalse(organizations.isOwnedBy(id, "mallory"));
+        assertFalse(organizations.isOwnedBy(-42, "bob"));
     }
 
     @Test
-    void deletedOrganizationDisappearsFromTheCollection() throws SQLException {
-        organizations.addOrganizationToTheBase(sampleOrganization("Doomed", "carol"), -1);
+    void deletedOrganizationDisappears() throws SQLException {
+        organizations.add(sampleOrganization("Doomed", "carol"), -1);
         int id = idOf("Doomed");
 
-        organizations.deleteOrganizationFromDataBase(id);
+        organizations.delete(id);
 
-        assertTrue(loadAll().stream().noneMatch(organization -> organization.getId() == id));
+        assertTrue(organizations.findAll().stream().noneMatch(organization -> organization.getId() == id));
     }
 
-    private static List<Organization> loadAll() throws SQLException {
-        List<Organization> loaded = new ArrayList<>();
-        OrganizationsRepository.loadCollection(loaded);
-        return loaded;
+    @Test
+    void clearByOwnerRemovesOnlyTheirRows() throws SQLException {
+        organizations.add(sampleOrganization("DavesFirst", "dave"), -1);
+        organizations.add(sampleOrganization("DavesSecond", "dave"), -1);
+        organizations.add(sampleOrganization("EvesOnly", "eve"), -1);
+
+        organizations.clearByOwner("dave");
+
+        List<Organization> remaining = organizations.findAll();
+        assertTrue(remaining.stream().noneMatch(organization -> organization.getOwner().equals("dave")));
+        assertTrue(remaining.stream().anyMatch(organization -> organization.getName().equals("EvesOnly")));
     }
 
     private static int idOf(String name) throws SQLException {
-        return loadAll().stream()
+        return organizations.findAll().stream()
                 .filter(organization -> organization.getName().equals(name))
                 .findFirst()
                 .orElseThrow()

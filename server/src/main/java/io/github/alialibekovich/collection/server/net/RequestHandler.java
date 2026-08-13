@@ -7,13 +7,14 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.SocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.DatagramChannel;
 import java.sql.SQLException;
 
 /**
- * Deserializes one datagram and executes the command it carries.
- *
- * <p>Owns its private copy of the datagram bytes, so the accept loop is free
- * to reuse its receive buffer for the next packet.</p>
+ * Deserializes one datagram (its own copy of the bytes), lets the dispatcher
+ * produce the answer and sends it back. Transport concerns live here; the
+ * handlers never touch the channel.
  */
 public class RequestHandler implements Runnable {
 
@@ -21,18 +22,24 @@ public class RequestHandler implements Runnable {
 
     private final byte[] datagram;
     private final SocketAddress socketAddress;
-    private final CommandDecoder decoder;
+    private final DatagramChannel channel;
+    private final CommandDispatcher dispatcher;
 
-    public RequestHandler(byte[] datagram, SocketAddress socketAddress, CommandDecoder decoder) {
+    public RequestHandler(byte[] datagram, SocketAddress socketAddress,
+                          DatagramChannel channel, CommandDispatcher dispatcher) {
         this.datagram = datagram;
         this.socketAddress = socketAddress;
-        this.decoder = decoder;
+        this.channel = channel;
+        this.dispatcher = dispatcher;
     }
 
     @Override
     public void run() {
         try (ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(datagram))) {
-            decoder.decode(in.readObject());
+            String answer = dispatcher.dispatch(in.readObject());
+            if (answer != null) {
+                channel.send(ByteBuffer.wrap(answer.getBytes()), socketAddress);
+            }
         } catch (IOException | SQLException | ClassNotFoundException e) {
             log.error("Failed to process a datagram from {}", socketAddress, e);
         }
