@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.alialibekovich</groupId>
+        <artifactId>collection-management-application</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>collection-client</artifactId>
+
+    <name>Collection Client</name>
+    <description>JavaFX client with a localized interface and live collection visualization</description>
+
+    <properties>
+        <javafx.version>21.0.3</javafx.version>
+        <!-- override on the command line: mvn -pl client javafx:run -Dclient.args="localhost 5555" -->
+        <client.args>localhost 5555</client.args>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.github.alialibekovich</groupId>
+            <artifactId>collection-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-fxml</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-maven-plugin</artifactId>
+                <version>0.0.8</version>
+                <configuration>
+                    <mainClass>io.github.alialibekovich.collection.client.Main</mainClass>
+                    <commandlineArgs>${client.args}</commandlineArgs>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
