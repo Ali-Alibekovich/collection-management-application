@@ -19,5 +19,22 @@ services:
       timeout: 3s
       retries: 10
 
+  # the UDP server, containerized: docker compose --profile full up --build
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: collection-server
+    profiles: [full]
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/collection
+      DB_USER: collection
+      DB_PASSWORD: collection
+    ports:
+      - "5555:5555/udp"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres-data:
