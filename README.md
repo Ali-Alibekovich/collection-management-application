@@ -54,7 +54,8 @@ The project is a three-module Maven build:
 | `client` | JavaFX UI, client-side commands, i18n resources |
 
 A deeper dive — wire protocol, threading model, database schema — lives in
-[`docs/architecture.md`](docs/architecture.md).
+[`docs/architecture.md`](docs/architecture.md); key decisions are captured as
+ADRs in [`docs/adr`](docs/adr).
 
 ## Getting started
 
@@ -67,7 +68,8 @@ docker compose up -d
 # 2. Build everything
 mvn package -DskipTests
 
-# 3. Run the server (defaults match docker-compose)
+# 3. Run the server (defaults match docker-compose;
+#    or containerized: docker compose --profile full up --build)
 java -jar server/target/collection-server-1.0.0.jar
 
 # 4. Run the client
