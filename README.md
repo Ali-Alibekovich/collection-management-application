@@ -1,5 +1,7 @@
 # Collection Management Application
 
+**English** | [Русский](README.ru.md)
+
 [![CI](https://github.com/Ali-Alibekovich/collection-management-application/actions/workflows/ci.yml/badge.svg)](https://github.com/Ali-Alibekovich/collection-management-application/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-17-blue)
 ![JavaFX](https://img.shields.io/badge/UI-JavaFX-orange)
